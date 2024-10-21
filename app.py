@@ -128,6 +128,7 @@ if uploaded_file:
         # EDA and Descriptive Statistics
         if st.button("Perform EDA"):
             eda_output = perform_eda(df)
+            st.session_state['eda_output'] = eda_output  # Store the EDA output in session state
         
         # Initialize session state for graph storage if not already done
         if 'graph_files' not in st.session_state:
@@ -173,6 +174,8 @@ if uploaded_file:
 
         # Generate PDF Report
         if st.button("Generate PDF Report") and len(st.session_state['graph_files']) > 0:
+            # Retrieve the EDA output from session state
+            eda_output = st.session_state.get('eda_output', "No EDA performed.")
             graph_files = st.session_state['graph_files']
             pdf_file = generate_pdf_report(eda_output, graph_files)
             st.success(f"PDF Report generated: {pdf_file}")
