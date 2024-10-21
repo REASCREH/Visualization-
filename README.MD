@@ -1,5 +1,6 @@
 # Data Visualization and EDA (Exploratory Data Analysis)
-This app provides an easy-to-use platform for users to perform Exploratory Data Analysis (EDA) and generate data visualizations by uploading various types of data files (CSV, Excel, SQL). Users can also create comprehensive PDF reports that compile both the results of the EDA and the visualizations created, making it useful for sharing and presentations.
+This app provides an easy-to-use platform for users to perform Exploratory Data Analysis (EDA) and generate data visualizations by uploading various types of data files (CSV, Excel, SQL)
+. Users can also create comprehensive PDF reports that compile both the results of the EDA and the visualizations created, making it useful for sharing and presentations.
 
 
 
@@ -126,17 +127,21 @@ Statsmodels: Used for advanced statistical models and tests.
 Data Analysts
 
 
-Unlock rapid, code-free exploratory data analysis (EDA) and generate insightful visualizations with just a few clicks. This tool accelerates the data exploration phase, allowing analysts to gain actionable insights without writing any code.
+Unlock rapid, code-free exploratory data analysis (EDA) and generate insightful visualizations with just a few clicks. This tool accelerates the data exploration phase,
+allowing analysts to gain actionable insights without writing any code.
 
 Business Analysts
 
-Empower your business decisions by analyzing datasets effortlessly. This app helps business analysts quickly visualize and interpret data trends, uncover hidden patterns, and create compelling data stories for stakeholders.
+Empower your business decisions by analyzing datasets effortlessly. This app helps business analysts quickly visualize and interpret data trends, uncover hidden patterns,
+and create compelling data stories for stakeholders.
 
 Researchers & Students
 
-Simplify the analysis of experimental or academic datasets. Whether you're working on research projects or coursework, this tool offers an easy way to perform data exploration, visualize findings, and generate publication-ready reports.
+Simplify the analysis of experimental or academic datasets. Whether you're working on research projects or coursework, this tool offers an easy way to perform data exploration, 
+visualize findings, and generate publication-ready reports.
 
 Educators
 
-Enhance the learning experience in data analysis courses. With its intuitive interface, educators can use this tool to teach students the fundamentals of data exploration and visualization, helping them understand complex concepts with practical, hands-on examples.
+Enhance the learning experience in data analysis courses. With its intuitive interface, educators can use this tool to teach students the fundamentals of data exploration and visualization
+, helping them understand complex concepts with practical, hands-on examples.
 
