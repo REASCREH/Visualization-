@@ -110,8 +110,14 @@ if uploaded_file:
 
     # EDA and Descriptive Statistics
     if st.button("Perform EDA"):
-        eda_output = perform_eda(df)
+        eda_output = perform_eda(df)  # Perform EDA and store results
+        st.session_state['eda_done'] = True  # Set flag to indicate EDA is done
     
+    # Display EDA if it has already been performed
+    if 'eda_done' in st.session_state and st.session_state['eda_done']:
+        st.write("### Exploratory Data Analysis Results")
+        st.write(st.session_state['eda_output'])  # Show stored EDA results
+
     # Initialize session state for graph storage if not already done
     if 'graph_files' not in st.session_state:
         st.session_state['graph_files'] = []
