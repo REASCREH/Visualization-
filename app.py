@@ -1,21 +1,35 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import zipfile
+from io import BytesIO
 from fpdf import FPDF
 import tempfile
 from sqlalchemy import create_engine
+from statsmodels.tsa.seasonal import seasonal_decompose
 
-# Helper functions
+# Helper function to handle .zip files
 def load_data(file):
     if file.type == 'application/vnd.ms-excel':
         df = pd.read_excel(file)
     elif file.type == 'text/csv':
         df = pd.read_csv(file)
+    elif file.type == 'application/x-zip-compressed':
+        with zipfile.ZipFile(file) as z:
+            # Assuming there's only one CSV or Excel file inside the zip
+            for filename in z.namelist():
+                if filename.endswith('.csv'):
+                    df = pd.read_csv(z.open(filename))
+                elif filename.endswith('.xlsx') or filename.endswith('.xls'):
+                    df = pd.read_excel(z.open(filename))
+                else:
+                    st.error('Unsupported file format inside zip. Please upload CSV or Excel.')
+                    return None
     elif 'sql' in file.name:
         engine = create_engine('sqlite:///your_sql_database.db')  # Modify to match your database
         df = pd.read_sql(file.name, engine)
     else:
-        st.error('Unsupported file format. Please upload CSV, Excel, or SQL.')
+        st.error('Unsupported file format. Please upload CSV, Excel, SQL, or ZIP.')
         return None
     return df
 
@@ -55,6 +69,7 @@ def perform_eda(df):
 
     return eda_output
 
+# Function to generate plot
 def generate_plot(df, x_col, y_col, graph_type):
     st.write(f"### {graph_type} Plot")
     
@@ -81,12 +96,38 @@ def generate_plot(df, x_col, y_col, graph_type):
     
     return fig
 
+# Function to handle Time Series Analysis and show trend/seasonality
 def generate_time_series_plot(df, date_col, value_col):
     st.write(f"### Time Series Trend Plot")
     fig = px.line(df, x=date_col, y=value_col, title='Time Series Trend')
     st.plotly_chart(fig)
     return fig
 
+def show_seasonality_trend(df, date_col, value_col):
+    df[date_col] = pd.to_datetime(df[date_col])
+    df.set_index(date_col, inplace=True)
+    
+    # Decompose the time series into trend, seasonality, and residuals
+    result = seasonal_decompose(df[value_col], model='additive', period=12)  # Adjust period for your data
+
+    st.write("### Decomposed Time Series Components:")
+    
+    # Plotting trend
+    st.write("#### Trend")
+    trend_fig = px.line(result.trend, title="Trend Component")
+    st.plotly_chart(trend_fig)
+    
+    # Plotting seasonality
+    st.write("#### Seasonality")
+    seasonality_fig = px.line(result.seasonal, title="Seasonality Component")
+    st.plotly_chart(seasonality_fig)
+    
+    # Plotting residuals
+    st.write("#### Residuals")
+    residual_fig = px.line(result.resid, title="Residuals Component")
+    st.plotly_chart(residual_fig)
+
+# Save graph as image
 def save_graph_as_image(fig):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
         fig.write_image(temp_file.name)
@@ -118,7 +159,7 @@ def generate_pdf_report(eda_output, graph_files):
 st.title("Data Visualization and EDA App")
 
 # File Upload
-uploaded_file = st.file_uploader("Upload a file (CSV, Excel, SQL)", type=["csv", "xlsx", "xls", "sql"])
+uploaded_file = st.file_uploader("Upload a file (CSV, Excel, SQL, ZIP)", type=["csv", "xlsx", "xls", "sql", "zip"])
 
 if uploaded_file:
     df = load_data(uploaded_file)
@@ -155,9 +196,15 @@ if uploaded_file:
 
             # Check for Time Series Data
             if 'date' in x_column.lower() or 'time' in x_column.lower():  # Simple check for date column
-                date_col = x_column
-                value_col = y_column
-                generate_time_series_plot(df, date_col, value_col)
+                if y_column is not None and pd.api.types.is_numeric_dtype(df[y_column]):
+                    date_col = x_column
+                    value_col = y_column
+                    generate_time_series_plot(df, date_col, value_col)
+                    
+                    # Show seasonality and trend
+                    show_seasonality_trend(df, date_col, value_col)
+                else:
+                    st.warning("Sorry, the selected dataset does not contain suitable numeric data for time series analysis.")
             else:
                 if graph_type in ['Line Plot', 'Bar Plot', 'Scatter Plot', 'Histogram', 'Box Plot', 'Pie Chart', 'Heatmap', 'Column Chart', 'Dot Plot']:
                     plot = generate_plot(df, x_column, y_column, graph_type)
@@ -169,24 +216,13 @@ if uploaded_file:
                     st.session_state['graph_counter'] += 1  # Increment graph counter
 
         # Button to add another graph
-        if st.button(f"Add Another Graph"):
-            st.session_state['graph_counter'] += 1  # Increment graph counter for a new graph
+        if st.button("Add Another Graph"):
+            st.session_state['graph_counter'] += 1
 
-        # Generate PDF Report
-        if st.button("Generate PDF Report") and len(st.session_state['graph_files']) > 0:
-            # Retrieve the EDA output from session state
-            eda_output = st.session_state.get('eda_output', "No EDA performed.")
-            graph_files = st.session_state['graph_files']
-            pdf_file = generate_pdf_report(eda_output, graph_files)
-            st.success(f"PDF Report generated: {pdf_file}")
-            st.download_button("Download PDF", data=open(pdf_file, "rb"), file_name="eda_report.pdf")
-
-# Remove existing graphs
-if 'graph_files' in st.session_state and len(st.session_state['graph_files']) > 0:
-    st.write("## Existing Graphs")
-    for idx, graph_file in enumerate(st.session_state['graph_files']):
-        st.image(graph_file, caption=f"Graph {idx + 1}")
-        if st.button(f"Remove Graph {idx + 1}"):
-            st.session_state['graph_files'].pop(idx)
-            st.success(f"Graph {idx + 1} removed.")
-            st.experimental_rerun()  # Refresh the app to show updated graph list
+# Generate PDF Report
+if st.button("Generate PDF Report"):
+    if 'eda_output' in st.session_state and st.session_state['graph_files']:
+        pdf_file = generate_pdf_report(st.session_state['eda_output'], st.session_state['graph_files'])
+        st.success(f"PDF Report generated: {pdf_file}")
+    else:
+        st.warning("Please perform EDA and generate at least one graph to create a PDF report.")
