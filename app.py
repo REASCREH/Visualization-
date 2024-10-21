@@ -19,19 +19,41 @@ def load_data(file):
         return None
     return df
 
+# Perform EDA and capture the results as a string for PDF
 def perform_eda(df):
+    eda_output = ""
+
+    # Capture the head of the dataset
+    eda_output += "### Head of the dataset:\n"
+    eda_output += df.head().to_string() + "\n\n"
+
+    # Capture data types
+    eda_output += "### Data Types:\n"
+    eda_output += df.dtypes.to_string() + "\n\n"
+
+    # Capture missing values
+    eda_output += "### Missing Values:\n"
+    eda_output += df.isnull().sum().to_string() + "\n\n"
+
+    # Capture descriptive statistics
+    eda_output += "### Descriptive Statistics:\n"
+    eda_output += df.describe().to_string() + "\n\n"
+
+    # Show the EDA results in Streamlit as before
     st.write("### Exploratory Data Analysis")
     st.write("Head of the dataset:")
     st.dataframe(df.head())
-    
+
     st.write("Data Types:")
     st.write(df.dtypes)
-    
+
     st.write("Missing Values:")
     st.write(df.isnull().sum())
-    
+
     st.write("Descriptive Statistics:")
     st.write(df.describe())
+
+    return eda_output
 
 def generate_plot(df, x_col, y_col, graph_type):
     st.write(f"### {graph_type} Plot")
@@ -70,6 +92,7 @@ def save_graph_as_image(fig):
         fig.write_image(temp_file.name)
         return temp_file.name
 
+# Generate PDF Report with EDA output and graphs
 def generate_pdf_report(eda_output, graph_files):
     pdf = FPDF()
     pdf.add_page()
@@ -80,8 +103,8 @@ def generate_pdf_report(eda_output, graph_files):
 
     # Add EDA output as text
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 10, eda_output)
-    
+    pdf.multi_cell(0, 10, eda_output)  # Add the EDA text here
+
     # Add graphs to PDF
     for graph_file in graph_files:
         pdf.image(graph_file, x=10, w=190)  # Adjust width as needed
@@ -104,7 +127,7 @@ if uploaded_file:
 
         # EDA and Descriptive Statistics
         if st.button("Perform EDA"):
-            perform_eda(df)
+            eda_output = perform_eda(df)
         
         # Initialize session state for graph storage if not already done
         if 'graph_files' not in st.session_state:
@@ -150,12 +173,6 @@ if uploaded_file:
 
         # Generate PDF Report
         if st.button("Generate PDF Report") and len(st.session_state['graph_files']) > 0:
-            eda_output = """
-            Data Analysis and Visualizations
-            - Head of the dataset
-            - Data types and Missing values
-            - Descriptive statistics
-            """
             graph_files = st.session_state['graph_files']
             pdf_file = generate_pdf_report(eda_output, graph_files)
             st.success(f"PDF Report generated: {pdf_file}")
