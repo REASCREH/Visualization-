@@ -1,68 +1,124 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import io
+import plotly.express as px
+from fpdf import FPDF
+import tempfile
+import os
 
-# Function to perform EDA (placeholder for your implementation)
+# Function to perform EDA
 def perform_eda(df):
-    # This function should return the EDA summary
-    eda_summary = {
-        "shape": df.shape,
-        "data_types": df.dtypes,
-        "missing_values": df.isnull().sum(),
-        "descriptive_stats": df.describe()
-    }
-    return eda_summary
+    eda_output = ""
 
-# Function to generate plots based on user input
-def generate_plot(df, x_col, y_col, graph_type, sample_size):
-    if sample_size and sample_size > 0:
-        df = df.sample(n=sample_size)
+    # Capture the head of the dataset
+    eda_output += "### Head of the dataset:\n"
+    eda_output += df.head().to_string() + "\n\n"
 
-    plt.figure(figsize=(10, 6))
+    # Capture data types
+    eda_output += "### Data Types:\n"
+    eda_output += df.dtypes.to_string() + "\n\n"
+
+    # Capture missing values
+    eda_output += "### Missing Values:\n"
+    eda_output += df.isnull().sum().to_string() + "\n\n"
+
+    # Capture descriptive statistics
+    eda_output += "### Descriptive Statistics:\n"
+    eda_output += df.describe().to_string() + "\n\n"
+
+    # Store the EDA output in session state
+    st.session_state['eda_output'] = eda_output
+
+    # Show the EDA results in Streamlit
+    st.write("### Exploratory Data Analysis")
+    st.write("Head of the dataset:")
+    st.dataframe(df.head())
+
+    st.write("Data Types:")
+    st.write(df.dtypes)
+
+    st.write("Missing Values:")
+    st.write(df.isnull().sum())
+
+    st.write("Descriptive Statistics:")
+    st.write(df.describe())
+
+    return eda_output
+
+# Function to generate plot
+def generate_plot(df, x_col, y_col, graph_type, sample_size=None):
+    if sample_size:
+        df = df.sample(n=sample_size)  # Sample the data if required
+
+    st.write(f"### {graph_type} Plot")
 
     if graph_type == 'Line Plot':
-        sns.lineplot(data=df, x=x_col, y=y_col)
+        fig = px.line(df, x=x_col, y=y_col)
     elif graph_type == 'Bar Plot':
-        sns.barplot(data=df, x=x_col, y=y_col)
+        fig = px.bar(df, x=x_col, y=y_col)
     elif graph_type == 'Scatter Plot':
-        sns.scatterplot(data=df, x=x_col, y=y_col)
+        fig = px.scatter(df, x=x_col, y=y_col)
     elif graph_type == 'Histogram':
-        sns.histplot(data=df, x=x_col, bins=30)
+        fig = px.histogram(df, x=x_col)
     elif graph_type == 'Box Plot':
-        sns.boxplot(data=df, x=x_col, y=y_col)
+        fig = px.box(df, x=x_col, y=y_col)
     elif graph_type == 'Pie Chart':
-        df[x_col].value_counts().plot.pie(autopct='%1.1f%%')
+        fig = px.pie(df, names=x_col, values=y_col, title='Pie Chart')
     elif graph_type == 'Heatmap':
-        corr = df.corr()
-        sns.heatmap(corr, annot=True, cmap='coolwarm')
+        fig = px.imshow(df.corr(), title='Heatmap of Correlation')
     elif graph_type == 'Column Chart':
-        df[x_col].value_counts().plot(kind='bar')
+        fig = px.bar(df, x=x_col, y=y_col)
     elif graph_type == 'Dot Plot':
-        sns.stripplot(data=df, x=x_col, y=y_col)
+        fig = px.scatter(df, x=x_col, y=y_col, title='Dot Plot', opacity=0.6)
 
-    plt.title(f"{graph_type} of {y_col} vs {x_col}")
-    plt.tight_layout()
-    return plt
+    st.plotly_chart(fig)
 
-# Function to save graph as image
+    return fig
+
+# Save graph as image
 def save_graph_as_image(fig):
-    img_buf = io.BytesIO()
-    fig.savefig(img_buf, format='png')
-    img_buf.seek(0)
-    return img_buf
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
+            fig.write_image(temp_file.name)
+            return temp_file.name
+    except Exception as e:
+        st.error(f"Error saving graph image: {str(e)}")
+        return None
 
-# Function to generate PDF report (placeholder for your implementation)
+# Generate PDF Report with EDA output and graphs
 def generate_pdf_report(eda_output, graph_files):
-    # Implement PDF generation logic
-    pdf_path = "output_report.pdf"
-    return pdf_path
+    pdf = FPDF()
+    pdf.add_page()
+
+    # Set title
+    pdf.set_font("Arial", size=16, style='B')
+    pdf.cell(200, 10, txt="Exploratory Data Analysis Report", ln=True, align='C')
+
+    # Add EDA output as text
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 10, eda_output)
+
+    # Add graphs to PDF
+    for graph_file in graph_files:
+        if graph_file and os.path.exists(graph_file):
+            pdf.image(graph_file, x=10, w=190)
+
+    pdf_output = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
+    pdf.output(pdf_output)
+
+    return pdf_output
 
 # Streamlit App
-st.title("Exploratory Data Analysis and Visualization")
+st.title("Data Visualization and EDA App")
 
-# File Upload
+# Initialize session state variables
+if 'eda_done' not in st.session_state:
+    st.session_state['eda_done'] = False
+if 'graph_files' not in st.session_state:
+    st.session_state['graph_files'] = []
+if 'graph_counter' not in st.session_state:
+    st.session_state['graph_counter'] = 0
+
+# File Upload# File Upload
 uploaded_file = st.file_uploader("Upload a file (CSV, Excel)", type=["csv", "xlsx", "xls"])
 
 if uploaded_file:
@@ -75,41 +131,30 @@ if uploaded_file:
 
         # Perform EDA and store the output
         eda_output = perform_eda(df)
-        st.session_state['eda_output'] = eda_output
+        st.session_state['eda_done'] = True
 
-        # Initialize session state for graphs
-        if 'graph_files' not in st.session_state:
-            st.session_state['graph_files'] = []
-        if 'graph_counter' not in st.session_state:
-            st.session_state['graph_counter'] = 0
+        # Select columns for plotting
+        x_col = st.selectbox("Select X-axis column:", df.columns)
+        y_col = st.selectbox("Select Y-axis column:", df.columns)
+        graph_type = st.selectbox("Select Graph Type:", 
+            ['Line Plot', 'Bar Plot', 'Scatter Plot', 'Histogram', 'Box Plot', 'Pie Chart', 'Heatmap', 'Column Chart', 'Dot Plot'])
+        sample_size = st.number_input("Sample Size (leave blank for full dataset):", min_value=1, step=1, value=None)
 
-        # Function to add graphs
-        def add_graph():
-            st.session_state['x_col'] = st.selectbox("Select X-axis column:", df.columns, key=f"x_col_{st.session_state['graph_counter']}")
-            st.session_state['y_col'] = st.selectbox("Select Y-axis column:", df.columns, key=f"y_col_{st.session_state['graph_counter']}")
-            st.session_state['graph_type'] = st.selectbox("Select Graph Type:", 
-                ['Line Plot', 'Bar Plot', 'Scatter Plot', 'Histogram', 'Box Plot', 'Pie Chart', 'Heatmap', 'Column Chart', 'Dot Plot'], 
-                key=f"graph_type_{st.session_state['graph_counter']}")
-            sample_size = st.number_input("Sample Size (leave blank for full dataset):", min_value=1, step=1, value=None, key=f"sample_size_{st.session_state['graph_counter']}")
+        # Button to generate plot
+        if st.button("Generate Plot"):
+            fig = generate_plot(df, x_col, y_col, graph_type, sample_size)
 
-            if st.button("Generate Plot", key=f"plot_button_{st.session_state['graph_counter']}"):
-                fig = generate_plot(df, st.session_state['x_col'], st.session_state['y_col'], st.session_state['graph_type'], sample_size)
-                
-                # Save graph as image
-                graph_file = save_graph_as_image(fig)
+            # Save graph as image
+            graph_file = save_graph_as_image(fig)
+            if graph_file:
                 st.session_state['graph_files'].append(graph_file)
                 st.session_state['graph_counter'] += 1
-                st.pyplot(fig)  # Display the generated plot
 
-        # Add initial graph
-        add_graph()
-
-        # Loop to add more graphs
-        while st.session_state['graph_counter'] < 5:  # Limit number of graphs for demonstration
-            if st.button("Add Another Graph"):
-                add_graph()
-            else:
-                break
+        # Display previously generated graphs
+        if st.session_state['graph_files']:
+            st.write("### Previously Generated Graphs:")
+            for graph_file in st.session_state['graph_files']:
+                st.image(graph_file)
 
         # Button to generate PDF report
         if st.button("Generate PDF Report"):
