@@ -122,8 +122,8 @@ if uploaded_file:
 
         # Display EDA if it has already been performed
         if 'eda_done' in st.session_state and st.session_state['eda_done']:
-            st.write("### Exploratory Data Analysis Results")
-            st.write(st.session_state['eda_output'])  # Show stored EDA results
+            with st.expander("View EDA Results"):
+                st.write(st.session_state['eda_output'])  # Show stored EDA results
 
         # Initialize session state for graph storage if not already done
         if 'graph_files' not in st.session_state:
@@ -137,36 +137,47 @@ if uploaded_file:
 
         st.write(f"## Graph {graph_counter + 1}")
 
-        selected_columns = st.multiselect(f"Select Columns for Graph {graph_counter + 1}", df.columns)
+        # Use Streamlit columns to organize layout
+        with st.expander(f"Configure Graph {graph_counter + 1}"):
+            selected_columns = st.multiselect(f"Select Columns for Graph {graph_counter + 1}", df.columns)
 
-        if len(selected_columns) >= 1:
-            x_column = selected_columns[0]
-            y_column = selected_columns[1] if len(selected_columns) > 1 else None
-            
-            graph_type = st.selectbox(f"Select Graph Type for Graph {graph_counter + 1}", 
-                                       ["Line Plot", "Bar Plot", "Scatter Plot", "Histogram", 
-                                        "Box Plot", "Pie Chart", "Heatmap", 
-                                        "Column Chart", "Dot Plot"])
+            if len(selected_columns) >= 1:
+                x_column = selected_columns[0]
+                y_column = selected_columns[1] if len(selected_columns) > 1 else None
+                
+                graph_type = st.selectbox(f"Select Graph Type for Graph {graph_counter + 1}", 
+                                           ["Line Plot", "Bar Plot", "Scatter Plot", "Histogram", 
+                                            "Box Plot", "Pie Chart", "Heatmap", 
+                                            "Column Chart", "Dot Plot"])
 
-            plot = generate_plot(df, x_column, y_column, graph_type)
-            
-            if st.button(f"Save Graph {graph_counter + 1}"):
-                graph_file = save_graph_as_image(plot)
-                if graph_file:
-                    st.success(f"Graph {graph_counter + 1} saved at: {graph_file}")
-                    st.session_state['graph_files'].append((plot, graph_file))
-                    st.session_state['graph_counter'] += 1  # Increment graph counter
-                else:
-                    st.error("Graph could not be saved.")
-        
+                plot = generate_plot(df, x_column, y_column, graph_type)
+
+                # Buttons for saving and adding graphs in the same row
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button(f"Save Graph {graph_counter + 1}"):
+                        graph_file = save_graph_as_image(plot)
+                        if graph_file:
+                            st.success(f"Graph {graph_counter + 1} saved!")
+                            st.session_state['graph_files'].append((plot, graph_file))
+                            st.session_state['graph_counter'] += 1  # Increment graph counter
+                        else:
+                            st.error("Graph could not be saved.")
+                
+                with col2:
+                    st.write("")  # Add some spacing
+                    if st.button("Add Another Graph"):
+                        st.session_state['graph_counter'] += 1
+
         # Show saved graphs
         if st.session_state['graph_files']:
             st.write("### Saved Graphs")
             for idx, (plot, file_path) in enumerate(st.session_state['graph_files']):
-                st.plotly_chart(plot)  # Show the graph
-                if st.button(f"Remove Graph {idx + 1}"):
-                    st.session_state['graph_files'].pop(idx)
-                    st.experimental_rerun()  # Rerun to update the UI after graph removal
+                with st.expander(f"Graph {idx + 1}"):
+                    st.plotly_chart(plot)  # Show the graph
+                    if st.button(f"Remove Graph {idx + 1}"):
+                        st.session_state['graph_files'].pop(idx)
+                        st.experimental_rerun()  # Rerun to update the UI after graph removal
 
         # Generate PDF Report
         if st.button("Generate PDF Report"):
