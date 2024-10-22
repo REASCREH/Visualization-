@@ -118,7 +118,7 @@ if 'graph_files' not in st.session_state:
 if 'graph_counter' not in st.session_state:
     st.session_state['graph_counter'] = 0
 
-# File Upload# File Upload
+# File Upload
 uploaded_file = st.file_uploader("Upload a file (CSV, Excel)", type=["csv", "xlsx", "xls"])
 
 if uploaded_file:
@@ -133,22 +133,30 @@ if uploaded_file:
         eda_output = perform_eda(df)
         st.session_state['eda_done'] = True
 
-        # Select columns for plotting
-        x_col = st.selectbox("Select X-axis column:", df.columns)
-        y_col = st.selectbox("Select Y-axis column:", df.columns)
-        graph_type = st.selectbox("Select Graph Type:", 
-            ['Line Plot', 'Bar Plot', 'Scatter Plot', 'Histogram', 'Box Plot', 'Pie Chart', 'Heatmap', 'Column Chart', 'Dot Plot'])
-        sample_size = st.number_input("Sample Size (leave blank for full dataset):", min_value=1, step=1, value=None)
+        # Loop for adding multiple graphs
+        while True:
+            # Select columns for plotting
+            x_col = st.selectbox("Select X-axis column:", df.columns)
+            y_col = st.selectbox("Select Y-axis column:", df.columns)
+            graph_type = st.selectbox("Select Graph Type:", 
+                ['Line Plot', 'Bar Plot', 'Scatter Plot', 'Histogram', 'Box Plot', 'Pie Chart', 'Heatmap', 'Column Chart', 'Dot Plot'])
+            sample_size = st.number_input("Sample Size (leave blank for full dataset):", min_value=1, step=1, value=None)
 
-        # Button to generate plot
-        if st.button("Generate Plot"):
-            fig = generate_plot(df, x_col, y_col, graph_type, sample_size)
+            # Button to generate plot
+            if st.button("Generate Plot"):
+                fig = generate_plot(df, x_col, y_col, graph_type, sample_size)
 
-            # Save graph as image
-            graph_file = save_graph_as_image(fig)
-            if graph_file:
-                st.session_state['graph_files'].append(graph_file)
-                st.session_state['graph_counter'] += 1
+                # Save graph as image
+                graph_file = save_graph_as_image(fig)
+                if graph_file:
+                    st.session_state['graph_files'].append(graph_file)
+                    st.session_state['graph_counter'] += 1
+
+            # Ask the user if they want to add more graphs
+            add_more = st.radio("Would you like to add another graph?", ("Yes", "No"))
+
+            if add_more == "No":
+                break
 
         # Display previously generated graphs
         if st.session_state['graph_files']:
