@@ -25,12 +25,31 @@ def perform_eda(df):
     eda_output += "### Descriptive Statistics:\n"
     eda_output += df.describe().to_string() + "\n\n"
 
+    # Store the EDA output in session state
+    st.session_state['eda_output'] = eda_output
+
+    # Show the EDA results in Streamlit
+    st.write("### Exploratory Data Analysis")
+    st.write("Head of the dataset:")
+    st.dataframe(df.head())
+
+    st.write("Data Types:")
+    st.write(df.dtypes)
+
+    st.write("Missing Values:")
+    st.write(df.isnull().sum())
+
+    st.write("Descriptive Statistics:")
+    st.write(df.describe())
+
     return eda_output
 
 # Function to generate plot
 def generate_plot(df, x_col, y_col, graph_type, sample_size=None):
     if sample_size:
         df = df.sample(n=sample_size)  # Sample the data if required
+
+    st.write(f"### {graph_type} Plot")
 
     if graph_type == 'Line Plot':
         fig = px.line(df, x=x_col, y=y_col)
@@ -50,6 +69,8 @@ def generate_plot(df, x_col, y_col, graph_type, sample_size=None):
         fig = px.bar(df, x=x_col, y=y_col)
     elif graph_type == 'Dot Plot':
         fig = px.scatter(df, x=x_col, y=y_col, title='Dot Plot', opacity=0.6)
+
+    st.plotly_chart(fig)
 
     return fig
 
@@ -74,12 +95,12 @@ def generate_pdf_report(eda_output, graph_files):
 
     # Add EDA output as text
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 10, eda_output)  # Add the EDA text here
+    pdf.multi_cell(0, 10, eda_output)
 
     # Add graphs to PDF
     for graph_file in graph_files:
         if graph_file and os.path.exists(graph_file):
-            pdf.image(graph_file, x=10, w=190)  # Adjust width as needed
+            pdf.image(graph_file, x=10, w=190)
 
     pdf_output = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
     pdf.output(pdf_output)
@@ -89,7 +110,15 @@ def generate_pdf_report(eda_output, graph_files):
 # Streamlit App
 st.title("Data Visualization and EDA App")
 
-# File Upload
+# Initialize session state variables
+if 'eda_done' not in st.session_state:
+    st.session_state['eda_done'] = False
+if 'graph_files' not in st.session_state:
+    st.session_state['graph_files'] = []
+if 'graph_counter' not in st.session_state:
+    st.session_state['graph_counter'] = 0
+
+# File Upload# File Upload
 uploaded_file = st.file_uploader("Upload a file (CSV, Excel)", type=["csv", "xlsx", "xls"])
 
 if uploaded_file:
@@ -100,77 +129,29 @@ if uploaded_file:
         else:
             df = pd.read_excel(uploaded_file)
 
-        st.success("File uploaded successfully!")
+        # Perform EDA and store the output
+        eda_output = perform_eda(df)
 
-        # Step 1: EDA Button
-        if st.button("Perform EDA"):
-            eda_output = perform_eda(df)
-            st.session_state['eda_output'] = eda_output
-            st.session_state['eda_done'] = True  # Set flag to indicate EDA is done
+        # Select columns for plotting
+        st.session_state['x_col'] = st.selectbox("Select X-axis column:", df.columns)
+        st.session_state['y_col'] = st.selectbox("Select Y-axis column:", df.columns)
+        st.session_state['graph_type'] = st.selectbox("Select Graph Type:", 
+            ['Line Plot', 'Bar Plot', 'Scatter Plot', 'Histogram', 'Box Plot', 'Pie Chart', 'Heatmap', 'Column Chart', 'Dot Plot'])
+        sample_size = st.number_input("Sample Size (leave blank for full dataset):", min_value=1, step=1, value=None)
 
-        # Step 2: Display EDA if done
-        if 'eda_done' in st.session_state and st.session_state['eda_done']:
-            with st.expander("View EDA Results"):
-                st.write(st.session_state['eda_output'])  # Show stored EDA results
+        if st.button("Generate Plot"):
+            fig = generate_plot(df, st.session_state['x_col'], st.session_state['y_col'], st.session_state['graph_type'], sample_size)
 
-            # Initialize session state for graph storage if not already done
-            if 'graph_files' not in st.session_state:
-                st.session_state['graph_files'] = []
-            if 'graph_counter' not in st.session_state:
-                st.session_state['graph_counter'] = 0
+            # Save graph as image
+            graph_file = save_graph_as_image(fig)
+            if graph_file:
+                st.session_state['graph_files'].append(graph_file)
+                st.session_state['graph_counter'] += 1
 
-            # Step 3: Configure Graph
-            graph_counter = st.session_state['graph_counter']
-            st.write(f"## Configure Graph {graph_counter + 1}")
-
-            with st.expander(f"Graph Configuration {graph_counter + 1}"):
-                # Select Sample Size (Optional)
-                sample_size = st.number_input("Select Sample Size (Optional)", min_value=1, max_value=len(df), value=len(df))
-
-                # Select Columns
-                selected_columns = st.multiselect("Select Columns for Graph", df.columns)
-
-                if len(selected_columns) >= 1:
-                    x_column = selected_columns[0]
-                    y_column = selected_columns[1] if len(selected_columns) > 1 else None
-
-                    # Select Graph Type
-                    graph_type = st.selectbox("Select Graph Type",
-                                              ["Line Plot", "Bar Plot", "Scatter Plot", "Histogram",
-                                               "Box Plot", "Pie Chart", "Heatmap",
-                                               "Column Chart", "Dot Plot"])
-
-                    # Plot the Graph
-                    plot = generate_plot(df, x_column, y_column, graph_type, sample_size)
-
-                    # Save and automatically show the graph
-                    if st.button("Save Graph"):
-                        graph_file = save_graph_as_image(plot)
-                        if graph_file:
-                            st.success(f"Graph {graph_counter + 1} saved!")
-                            st.session_state['graph_files'].append(graph_file)
-                            st.session_state['graph_counter'] += 1  # Increment graph counter
-
-            # Step 4: Display Saved Graphs
-            if st.session_state['graph_files']:
-                st.write("### Saved Graphs")
-                for idx, file_path in enumerate(st.session_state['graph_files']):
-                    with st.expander(f"Graph {idx + 1}"):
-                        st.image(file_path)  # Show the saved graph
-                        if st.button(f"Remove Graph {idx + 1}"):
-                            st.session_state['graph_files'].pop(idx)
-                            st.experimental_rerun()  # Rerun to update the UI after graph removal
-
-            # Step 5: Generate PDF Report
-            if st.button("Generate PDF Report"):
-                if st.session_state['eda_output'] and st.session_state['graph_files']:
-                    pdf_file = generate_pdf_report(st.session_state['eda_output'],
-                                                   st.session_state['graph_files'])
-                    st.success("PDF Report generated.")
-                    with open(pdf_file, 'rb') as f:
-                        st.download_button("Download PDF", data=f, file_name="EDA_Report.pdf")
-                else:
-                    st.warning("Please perform EDA and generate at least one graph to create a PDF report.")
+        # Button to generate PDF report
+        if st.button("Generate PDF Report"):
+            pdf_output = generate_pdf_report(st.session_state['eda_output'], st.session_state['graph_files'])
+            st.success(f"PDF report generated! [Download it here]({pdf_output})")
 
     except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
+        st.error(f"Error loading file: {str(e)}")
