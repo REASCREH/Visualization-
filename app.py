@@ -131,7 +131,7 @@ if uploaded_file:
         
         if 'graph_counter' not in st.session_state:
             st.session_state['graph_counter'] = 0
-        
+
         # Graph Input Logic
         graph_counter = st.session_state['graph_counter']
 
@@ -154,21 +154,27 @@ if uploaded_file:
                 graph_file = save_graph_as_image(plot)
                 if graph_file:
                     st.success(f"Graph {graph_counter + 1} saved at: {graph_file}")
-                    st.session_state['graph_files'].append(graph_file)
+                    st.session_state['graph_files'].append((plot, graph_file))
                     st.session_state['graph_counter'] += 1  # Increment graph counter
                 else:
                     st.error("Graph could not be saved.")
-
-        # Button to add another graph
-        if st.button("Add Another Graph"):
-            st.session_state['graph_counter'] += 1
+        
+        # Show saved graphs
+        if st.session_state['graph_files']:
+            st.write("### Saved Graphs")
+            for idx, (plot, file_path) in enumerate(st.session_state['graph_files']):
+                st.plotly_chart(plot)  # Show the graph
+                if st.button(f"Remove Graph {idx + 1}"):
+                    st.session_state['graph_files'].pop(idx)
+                    st.experimental_rerun()  # Rerun to update the UI after graph removal
 
         # Generate PDF Report
         if st.button("Generate PDF Report"):
             if 'eda_output' in st.session_state and st.session_state['graph_files']:
-                pdf_file = generate_pdf_report(st.session_state['eda_output'], st.session_state['graph_files'])
-                st.success(f"PDF Report generated: {pdf_file}")
-                st.download_button("Download PDF", data=open(pdf_file, 'rb').read(), file_name="EDA_Report.pdf")
+                pdf_file = generate_pdf_report(st.session_state['eda_output'], [f for _, f in st.session_state['graph_files']])
+                st.success(f"PDF Report generated.")
+                with open(pdf_file, 'rb') as f:
+                    st.download_button("Download PDF", data=f, file_name="EDA_Report.pdf")
             else:
                 st.warning("Please perform EDA and generate at least one graph to create a PDF report.")
     except Exception as e:
