@@ -152,22 +152,14 @@ if uploaded_file:
 
                 plot = generate_plot(df, x_column, y_column, graph_type)
 
-                # Buttons for saving and adding graphs in the same row
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button(f"Save Graph {graph_counter + 1}"):
-                        graph_file = save_graph_as_image(plot)
-                        if graph_file:
-                            st.success(f"Graph {graph_counter + 1} saved!")
-                            st.session_state['graph_files'].append((plot, graph_file))
-                            st.session_state['graph_counter'] += 1  # Increment graph counter
-                        else:
-                            st.error("Graph could not be saved.")
-                
-                with col2:
-                    st.write("")  # Add some spacing
-                    if st.button("Add Another Graph"):
-                        st.session_state['graph_counter'] += 1
+                # Save and automatically show the graph when "Save Graph" is clicked
+                if st.button(f"Save Graph {graph_counter + 1}"):
+                    graph_file = save_graph_as_image(plot)
+                    if graph_file:
+                        st.success(f"Graph {graph_counter + 1} saved and displayed!")
+                        st.session_state['graph_files'].append((plot, graph_file))
+                        st.session_state['graph_counter'] += 1  # Increment graph counter
+                        st.experimental_rerun()  # Refresh the app to show the saved graph
 
         # Show saved graphs
         if st.session_state['graph_files']:
