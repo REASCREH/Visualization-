@@ -159,7 +159,7 @@ if uploaded_file:
                         st.success(f"Graph {graph_counter + 1} saved and displayed!")
                         st.session_state['graph_files'].append((plot, graph_file))
                         st.session_state['graph_counter'] += 1  # Increment graph counter
-                        st.experimental_rerun()  # Refresh the app to show the saved graph
+                        st.experimental_refresh()  # Refresh the app to show the saved graph
 
         # Show saved graphs
         if st.session_state['graph_files']:
@@ -169,7 +169,7 @@ if uploaded_file:
                     st.plotly_chart(plot)  # Show the graph
                     if st.button(f"Remove Graph {idx + 1}"):
                         st.session_state['graph_files'].pop(idx)
-                        st.experimental_rerun()  # Rerun to update the UI after graph removal
+                        st.experimental_refresh()  # Rerun to update the UI after graph removal
 
         # Generate PDF Report
         if st.button("Generate PDF Report"):
