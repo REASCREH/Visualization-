@@ -134,16 +134,17 @@ if uploaded_file:
         st.session_state['eda_done'] = True
 
         # Loop for adding multiple graphs
+        graph_counter = 0
         while True:
             # Select columns for plotting
-            x_col = st.selectbox("Select X-axis column:", df.columns)
-            y_col = st.selectbox("Select Y-axis column:", df.columns)
-            graph_type = st.selectbox("Select Graph Type:", 
-                ['Line Plot', 'Bar Plot', 'Scatter Plot', 'Histogram', 'Box Plot', 'Pie Chart', 'Heatmap', 'Column Chart', 'Dot Plot'])
-            sample_size = st.number_input("Sample Size (leave blank for full dataset):", min_value=1, step=1, value=None)
+            x_col = st.selectbox(f"Select X-axis column for Graph {graph_counter + 1}:", df.columns, key=f"x_col_{graph_counter}")
+            y_col = st.selectbox(f"Select Y-axis column for Graph {graph_counter + 1}:", df.columns, key=f"y_col_{graph_counter}")
+            graph_type = st.selectbox(f"Select Graph Type for Graph {graph_counter + 1}:", 
+                ['Line Plot', 'Bar Plot', 'Scatter Plot', 'Histogram', 'Box Plot', 'Pie Chart', 'Heatmap', 'Column Chart', 'Dot Plot'], key=f"graph_type_{graph_counter}")
+            sample_size = st.number_input(f"Sample Size for Graph {graph_counter + 1} (leave blank for full dataset):", min_value=1, step=1, value=None, key=f"sample_size_{graph_counter}")
 
             # Button to generate plot
-            if st.button("Generate Plot"):
+            if st.button(f"Generate Plot for Graph {graph_counter + 1}", key=f"generate_button_{graph_counter}"):
                 fig = generate_plot(df, x_col, y_col, graph_type, sample_size)
 
                 # Save graph as image
@@ -151,9 +152,10 @@ if uploaded_file:
                 if graph_file:
                     st.session_state['graph_files'].append(graph_file)
                     st.session_state['graph_counter'] += 1
+                    graph_counter += 1
 
             # Ask the user if they want to add more graphs
-            add_more = st.radio("Would you like to add another graph?", ("Yes", "No"))
+            add_more = st.radio("Would you like to add another graph?", ("Yes", "No"), key=f"add_more_{graph_counter}")
 
             if add_more == "No":
                 break
