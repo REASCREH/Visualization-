@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 from fpdf import FPDF
 import tempfile
+import os
 
 # Perform EDA and capture the results as a string for PDF
 def perform_eda(df):
@@ -72,9 +73,13 @@ def generate_plot(df, x_col, y_col, graph_type):
 
 # Save graph as image
 def save_graph_as_image(fig):
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
-        fig.write_image(temp_file.name)
-        return temp_file.name
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
+            fig.write_image(temp_file.name)
+            return temp_file.name
+    except Exception as e:
+        st.error(f"Error saving graph image: {str(e)}")
+        return None
 
 # Generate PDF Report with EDA output and graphs
 def generate_pdf_report(eda_output, graph_files):
@@ -91,7 +96,8 @@ def generate_pdf_report(eda_output, graph_files):
 
     # Add graphs to PDF
     for graph_file in graph_files:
-        pdf.image(graph_file, x=10, w=190)  # Adjust width as needed
+        if graph_file and os.path.exists(graph_file):
+            pdf.image(graph_file, x=10, w=190)  # Adjust width as needed
     
     pdf_output = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
     pdf.output(pdf_output)
@@ -105,58 +111,65 @@ st.title("Data Visualization and EDA App")
 uploaded_file = st.file_uploader("Upload a file (CSV, Excel, SQL, ZIP)", type=["csv", "xlsx", "xls", "sql", "zip"])
 
 if uploaded_file:
-    df = pd.read_csv(uploaded_file)  # Add support for other file formats as needed
-    st.success("File uploaded successfully!")
+    try:
+        df = pd.read_csv(uploaded_file)  # Add support for other file formats as needed
+        st.success("File uploaded successfully!")
 
-    # EDA and Descriptive Statistics
-    if st.button("Perform EDA"):
-        eda_output = perform_eda(df)  # Perform EDA and store results
-        st.session_state['eda_done'] = True  # Set flag to indicate EDA is done
-    
-    # Display EDA if it has already been performed
-    if 'eda_done' in st.session_state and st.session_state['eda_done']:
-        st.write("### Exploratory Data Analysis Results")
-        st.write(st.session_state['eda_output'])  # Show stored EDA results
+        # EDA and Descriptive Statistics
+        if st.button("Perform EDA"):
+            eda_output = perform_eda(df)  # Perform EDA and store results
+            st.session_state['eda_done'] = True  # Set flag to indicate EDA is done
 
-    # Initialize session state for graph storage if not already done
-    if 'graph_files' not in st.session_state:
-        st.session_state['graph_files'] = []
-    
-    if 'graph_counter' not in st.session_state:
-        st.session_state['graph_counter'] = 0
-    
-    # Graph Input Logic
-    graph_counter = st.session_state['graph_counter']
+        # Display EDA if it has already been performed
+        if 'eda_done' in st.session_state and st.session_state['eda_done']:
+            st.write("### Exploratory Data Analysis Results")
+            st.write(st.session_state['eda_output'])  # Show stored EDA results
 
-    st.write(f"## Graph {graph_counter + 1}")
-
-    selected_columns = st.multiselect(f"Select Columns for Graph {graph_counter + 1}", df.columns)
-
-    if len(selected_columns) >= 1:
-        x_column = selected_columns[0]
-        y_column = selected_columns[1] if len(selected_columns) > 1 else None
+        # Initialize session state for graph storage if not already done
+        if 'graph_files' not in st.session_state:
+            st.session_state['graph_files'] = []
         
-        graph_type = st.selectbox(f"Select Graph Type for Graph {graph_counter + 1}", 
-                                   ["Line Plot", "Bar Plot", "Scatter Plot", "Histogram", 
-                                    "Box Plot", "Pie Chart", "Heatmap", 
-                                    "Column Chart", "Dot Plot"])
-
-        plot = generate_plot(df, x_column, y_column, graph_type)
+        if 'graph_counter' not in st.session_state:
+            st.session_state['graph_counter'] = 0
         
-        if st.button(f"Save Graph {graph_counter + 1}"):
-            graph_file = save_graph_as_image(plot)
-            st.success(f"Graph {graph_counter + 1} saved at: {graph_file}")
-            st.session_state['graph_files'].append(graph_file)
-            st.session_state['graph_counter'] += 1  # Increment graph counter
+        # Graph Input Logic
+        graph_counter = st.session_state['graph_counter']
 
-    # Button to add another graph
-    if st.button("Add Another Graph"):
-        st.session_state['graph_counter'] += 1
+        st.write(f"## Graph {graph_counter + 1}")
 
-# Generate PDF Report
-if st.button("Generate PDF Report"):
-    if 'eda_output' in st.session_state and st.session_state['graph_files']:
-        pdf_file = generate_pdf_report(st.session_state['eda_output'], st.session_state['graph_files'])
-        st.success(f"PDF Report generated: {pdf_file}")
-    else:
-        st.warning("Please perform EDA and generate at least one graph to create a PDF report.")
+        selected_columns = st.multiselect(f"Select Columns for Graph {graph_counter + 1}", df.columns)
+
+        if len(selected_columns) >= 1:
+            x_column = selected_columns[0]
+            y_column = selected_columns[1] if len(selected_columns) > 1 else None
+            
+            graph_type = st.selectbox(f"Select Graph Type for Graph {graph_counter + 1}", 
+                                       ["Line Plot", "Bar Plot", "Scatter Plot", "Histogram", 
+                                        "Box Plot", "Pie Chart", "Heatmap", 
+                                        "Column Chart", "Dot Plot"])
+
+            plot = generate_plot(df, x_column, y_column, graph_type)
+            
+            if st.button(f"Save Graph {graph_counter + 1}"):
+                graph_file = save_graph_as_image(plot)
+                if graph_file:
+                    st.success(f"Graph {graph_counter + 1} saved at: {graph_file}")
+                    st.session_state['graph_files'].append(graph_file)
+                    st.session_state['graph_counter'] += 1  # Increment graph counter
+                else:
+                    st.error("Graph could not be saved.")
+
+        # Button to add another graph
+        if st.button("Add Another Graph"):
+            st.session_state['graph_counter'] += 1
+
+        # Generate PDF Report
+        if st.button("Generate PDF Report"):
+            if 'eda_output' in st.session_state and st.session_state['graph_files']:
+                pdf_file = generate_pdf_report(st.session_state['eda_output'], st.session_state['graph_files'])
+                st.success(f"PDF Report generated: {pdf_file}")
+                st.download_button("Download PDF", data=open(pdf_file, 'rb').read(), file_name="EDA_Report.pdf")
+            else:
+                st.warning("Please perform EDA and generate at least one graph to create a PDF report.")
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
