@@ -20,30 +20,21 @@ def load_data(file):
     return df
 
 def perform_eda(df):
-    # Create output for the EDA details
-    eda_output = ""
-
-    st.write("### Exploratory Data Analysis")
-    st.write("Head of the dataset:")
-    st.dataframe(df.head())
+    eda_output = []
+    eda_output.append("### Exploratory Data Analysis")
+    eda_output.append("Head of the dataset:")
+    eda_output.append(df.head().to_string())
     
-    st.write("Data Types:")
-    st.write(df.dtypes)
+    eda_output.append("Data Types:")
+    eda_output.append(df.dtypes.to_string())
     
-    st.write("Missing Values:")
-    st.write(df.isnull().sum())
+    eda_output.append("Missing Values:")
+    eda_output.append(df.isnull().sum().to_string())
     
-    st.write("Descriptive Statistics:")
-    st.write(df.describe())
-
-    # Add EDA results to eda_output for PDF
-    eda_output += "Head of the dataset:\n" + df.head().to_string() + "\n\n"
-    eda_output += "Data Types:\n" + df.dtypes.to_string() + "\n\n"
-    eda_output += "Missing Values:\n" + df.isnull().sum().to_string() + "\n\n"
-    eda_output += "Descriptive Statistics:\n" + df.describe().to_string() + "\n\n"
+    eda_output.append("Descriptive Statistics:")
+    eda_output.append(df.describe().to_string())
     
-    # Store EDA output for report generation
-    st.session_state['eda_output'] = eda_output
+    return "\n".join(eda_output)
 
 def generate_plot(df, x_col, y_col, graph_type):
     st.write(f"### {graph_type} Plot")
@@ -116,15 +107,21 @@ if uploaded_file:
 
         # EDA and Descriptive Statistics
         if st.button("Perform EDA"):
-            perform_eda(df)
+            eda_output = perform_eda(df)
+            st.session_state['eda_output'] = eda_output  # Store EDA output in session state
+            st.write(eda_output)  # Display EDA output
         
-        # Initialize session state for graph storage if not already done
+        # Initialize session state for graph storage
         if 'graph_files' not in st.session_state:
             st.session_state['graph_files'] = []
         
         if 'graph_counter' not in st.session_state:
             st.session_state['graph_counter'] = 0
         
+        # Display EDA output if it exists
+        if 'eda_output' in st.session_state:
+            st.write(st.session_state['eda_output'])
+
         # Graph Input Logic
         graph_counter = st.session_state['graph_counter']
 
@@ -162,9 +159,7 @@ if uploaded_file:
 
         # Generate PDF Report
         if st.button("Generate PDF Report") and len(st.session_state['graph_files']) > 0:
-            eda_output = st.session_state.get('eda_output', 'No EDA performed.')
-            graph_files = st.session_state['graph_files']
-            pdf_file = generate_pdf_report(eda_output, graph_files)
+            pdf_file = generate_pdf_report(st.session_state['eda_output'], st.session_state['graph_files'])
             st.success(f"PDF Report generated: {pdf_file}")
             st.download_button("Download PDF", data=open(pdf_file, "rb"), file_name="eda_report.pdf")
 
