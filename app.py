@@ -133,10 +133,9 @@ if uploaded_file:
         eda_output = perform_eda(df)
         st.session_state['eda_done'] = True
 
-        # Get graph_counter from session state
+        # Loop for adding multiple graphs
         graph_counter = st.session_state['graph_counter']
 
-        # Loop for adding multiple graphs
         while True:
             # Select columns for plotting
             x_col = st.selectbox(f"Select X-axis column for Graph {graph_counter + 1}:", df.columns, key=f"x_col_{graph_counter}")
