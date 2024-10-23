@@ -133,8 +133,10 @@ if uploaded_file:
         eda_output = perform_eda(df)
         st.session_state['eda_done'] = True
 
+        # Get graph_counter from session state
+        graph_counter = st.session_state['graph_counter']
+
         # Loop for adding multiple graphs
-        graph_counter = 0
         while True:
             # Select columns for plotting
             x_col = st.selectbox(f"Select X-axis column for Graph {graph_counter + 1}:", df.columns, key=f"x_col_{graph_counter}")
@@ -151,8 +153,8 @@ if uploaded_file:
                 graph_file = save_graph_as_image(fig)
                 if graph_file:
                     st.session_state['graph_files'].append(graph_file)
-                    st.session_state['graph_counter'] += 1
-                    graph_counter += 1
+                    st.session_state['graph_counter'] += 1  # Update session state for next graph
+                    graph_counter += 1  # Increment local counter
 
             # Ask the user if they want to add more graphs
             add_more = st.radio("Would you like to add another graph?", ("Yes", "No"), key=f"add_more_{graph_counter}")
