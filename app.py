@@ -20,6 +20,9 @@ def load_data(file):
     return df
 
 def perform_eda(df):
+    # Create output for the EDA details
+    eda_output = ""
+
     st.write("### Exploratory Data Analysis")
     st.write("Head of the dataset:")
     st.dataframe(df.head())
@@ -32,6 +35,15 @@ def perform_eda(df):
     
     st.write("Descriptive Statistics:")
     st.write(df.describe())
+
+    # Add EDA results to eda_output for PDF
+    eda_output += "Head of the dataset:\n" + df.head().to_string() + "\n\n"
+    eda_output += "Data Types:\n" + df.dtypes.to_string() + "\n\n"
+    eda_output += "Missing Values:\n" + df.isnull().sum().to_string() + "\n\n"
+    eda_output += "Descriptive Statistics:\n" + df.describe().to_string() + "\n\n"
+    
+    # Store EDA output for report generation
+    st.session_state['eda_output'] = eda_output
 
 def generate_plot(df, x_col, y_col, graph_type):
     st.write(f"### {graph_type} Plot")
@@ -150,12 +162,7 @@ if uploaded_file:
 
         # Generate PDF Report
         if st.button("Generate PDF Report") and len(st.session_state['graph_files']) > 0:
-            eda_output = """
-            Data Analysis and Visualizations
-            - Head of the dataset
-            - Data types and Missing values
-            - Descriptive statistics
-            """
+            eda_output = st.session_state.get('eda_output', 'No EDA performed.')
             graph_files = st.session_state['graph_files']
             pdf_file = generate_pdf_report(eda_output, graph_files)
             st.success(f"PDF Report generated: {pdf_file}")
